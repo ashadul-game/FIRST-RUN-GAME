@@ -1,189 +1,211 @@
 <!DOCTYPE html>
 <html lang="bn">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chase & Run Game</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background-color: #1a1a1a;
-      color: white;
-      font-family: Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      touch-action: manipulation;
-    }
-    h2 { margin: 5px 0; }
-    canvas {
-      border: 2px solid #fff;
-      background-color: #222;
-      max-width: 90vw;
-    }
-    .controls-container {
-      margin-top: 15px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-    }
-    .btn-row {
-      display: flex;
-      gap: 15px;
-    }
-    .btn {
-      width: 55px;
-      height: 55px;
-      background-color: #444;
-      color: white;
-      font-size: 20px;
-      font-weight: bold;
-      border: 2px solid #666;
-      border-radius: 10px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      user-select: none;
-    }
-    .btn:active {
-      background-color: #00ff88;
-      color: black;
-    }
-    #restartBtn {
-      margin-top: 10px;
-      padding: 8px 16px;
-      background: #ff4444;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      font-size: 14px;
-      display: none;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chase & Run Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            touch-action: manipulation;
+        }
+        h2 { margin: 5px 0; }
+        canvas {
+            border: 2px solid #fff;
+            background-color: #222;
+            max-width: 90vw;
+            max-height: 70vh;
+            display: block;
+        }
+        #controls {
+            margin-top: 10px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            width: 90%;
+            max-width: 300px;
+        }
+        .btn {
+            background: #444;
+            color: white;
+            border: 1px solid #fff;
+            padding: 15px;
+            font-size: 18px;
+            text-align: center;
+            border-radius: 5px;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .btn:active { background: #666; }
+        #upBtn { grid-column: 2; }
+        #leftBtn { grid-column: 1; grid-row: 2; }
+        #downBtn { grid-column: 2; grid-row: 2; }
+        #rightBtn { grid-column: 3; grid-row: 2; }
+    </style>
 </head>
 <body>
-
-  <h2>Run & Chase Game</h2>
-  <canvas id="gameCanvas" width="320" height="320"></canvas>
-  <button id="restartBtn" onclick="resetGame()">আবার খেলুন (Restart)</button>
-
-  <!-- মোবাইল কন্ট্রোল বাটন -->
-  <div class="controls-container">
-    <div class="btn" id="btnUp">▲</div>
-    <div class="btn-row">
-      <div class="btn" id="btnLeft">◄</div>
-      <div class="btn" id="btnDown">▼</div>
-      <div class="btn" id="btnRight">►</div>
+    <h2>ধরা-ধরি খেলা</h2>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    
+    <div id="controls">
+        <div class="btn" id="upBtn">⬆️</div>
+        <div class="btn" id="leftBtn">⬅️</div>
+        <div class="btn" id="downBtn">⬇️</div>
+        <div class="btn" id="rightBtn">➡️</div>
     </div>
-  </div>
 
-  <script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
-    const restartBtn = document.getElementById("restartBtn");
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-    let runner, chaser, gameOver, score;
+        // ছেলে প্লেয়ার আঁকার ফাংশন
+        function drawBoy(x, y, size) {
+            // মাথার ওপর "You" লেখা
+            ctx.fillStyle = "#00FFCC";
+            ctx.font = "bold 12px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("You", x + size/2, y - 5);
 
-    function resetGame() {
-      runner = { x: 50, y: 50, size: 16, speed: 3.5, dx: 0, dy: 0 };
-      chaser = { x: 250, y: 250, size: 16, speed: 1.8 };
-      gameOver = false;
-      score = 0;
-      restartBtn.style.display = "none";
-      gameLoop();
-    }
+            // মাথা
+            ctx.fillStyle = "#FFD700";
+            ctx.beginPath();
+            ctx.arc(x + size/2, y + size/3, size/3, 0, Math.PI * 2);
+            ctx.fill();
 
-    // বাটন প্রেস হ্যান্ডলার
-    function setDirection(dx, dy) {
-      if (!gameOver) {
-        runner.dx = dx * runner.speed;
-        runner.dy = dy * runner.speed;
-      }
-    }
+            // চুল
+            ctx.fillStyle = "black";
+            ctx.fillRect(x + size/4, y + size/10, size/2, size/5);
 
-    function stopMovement() {
-      runner.dx = 0;
-      runner.dy = 0;
-    }
+            // শরীর
+            ctx.fillStyle = "blue";
+            ctx.fillRect(x + size/4, y + size/2, size/2, size/2);
 
-    // অন-স্ক্রিন বাটনে টাচ ইভেন্ট
-    const bindBtn = (id, dx, dy) => {
-      const btn = document.getElementById(id);
-      btn.addEventListener("touchstart", (e) => { e.preventDefault(); setDirection(dx, dy); });
-      btn.addEventListener("touchend", (e) => { e.preventDefault(); stopMovement(); });
-      btn.addEventListener("mousedown", () => setDirection(dx, dy));
-      btn.addEventListener("mouseup", stopMovement);
-    };
+            // চোখ
+            ctx.fillStyle = "black";
+            ctx.fillRect(x + size/3, y + size/4, size/10, size/10);
+            ctx.fillRect(x + size*2/3, y + size/4, size/10, size/10);
+        }
 
-    bindBtn("btnUp", 0, -1);
-    bindBtn("btnDown", 0, 1);
-    bindBtn("btnLeft", -1, 0);
-    bindBtn("btnRight", 1, 0);
+        // মেয়ে প্লেয়ার আঁকার ফাংশন
+        function drawGirl(x, y, size) {
+            // মাথার ওপর "Your Ex" লেখা
+            ctx.fillStyle = "#FF4D4D";
+            ctx.font = "bold 12px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("Your Ex", x + size/2, y - 5);
 
-    function update() {
-      if (gameOver) return;
+            // মাথা
+            ctx.fillStyle = "#FFC0CB";
+            ctx.beginPath();
+            ctx.arc(x + size/2, y + size/3, size/3, 0, Math.PI * 2);
+            ctx.fill();
 
-      runner.x += runner.dx;
-      runner.y += runner.dy;
+            // লম্বা চুল
+            ctx.fillStyle = "brown";
+            ctx.fillRect(x, y, size/4, size);
+            ctx.fillRect(x + size*3/4, y, size/4, size);
 
-      runner.x = Math.max(0, Math.min(canvas.width - runner.size, runner.x));
-      runner.y = Math.max(0, Math.min(canvas.height - runner.size, runner.y));
+            // জামা
+            ctx.fillStyle = "red";
+            ctx.beginPath();
+            ctx.moveTo(x + size/2, y + size/2);
+            ctx.lineTo(x, y + size);
+            ctx.lineTo(x + size, y + size);
+            ctx.fill();
 
-      // লাল বক্সটির তাড়া করা
-      if (chaser.x < runner.x) chaser.x += chaser.speed;
-      if (chaser.x > runner.x) chaser.x -= chaser.speed;
-      if (chaser.y < runner.y) chaser.y += chaser.speed;
-      if (chaser.y > runner.y) chaser.y -= chaser.speed;
+            // চোখ
+            ctx.fillStyle = "black";
+            ctx.fillRect(x + size/3, y + size/4, size/10, size/10);
+            ctx.fillRect(x + size*2/3, y + size/4, size/10, size/10);
+        }
 
-      // ধরা পড়ার লজিক
-      const distX = runner.x - chaser.x;
-      const distY = runner.y - chaser.y;
-      const distance = Math.sqrt(distX * distX + distY * distY);
+        let player = {
+            x: 50,
+            y: 50,
+            size: 20,
+            speed: 5,
+            draw: function() { drawBoy(this.x, this.y, this.size); }
+        };
 
-      if (distance < runner.size - 2) {
-        gameOver = true;
-        restartBtn.style.display = "block";
-      } else {
-        score++;
-      }
-    }
+        let enemy = {
+            x: 300,
+            y: 300,
+            size: 20,
+            speed: 2,
+            draw: function() { drawGirl(this.x, this.y, this.size); }
+        };
 
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let keys = {};
+        let gameOver = false;
 
-      // সবুজ রানার
-      ctx.fillStyle = "#00ff88";
-      ctx.fillRect(runner.x, runner.y, runner.size, runner.size);
+        window.addEventListener('keydown', e => keys[e.key] = true);
+        window.addEventListener('keyup', e => keys[e.key] = false);
 
-      // লাল চেজার
-      ctx.fillStyle = "#ff4444";
-      ctx.fillRect(chaser.x, chaser.y, chaser.size, chaser.size);
+        function setupTouchBtn(id, key) {
+            const btn = document.getElementById(id);
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[key] = true; });
+            btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[key] = false; });
+        }
 
-      // স্কোর
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "14px Arial";
-      ctx.fillText("Score: " + Math.floor(score / 10), 10, 20);
+        setupTouchBtn('upBtn', 'ArrowUp');
+        setupTouchBtn('downBtn', 'ArrowDown');
+        setupTouchBtn('leftBtn', 'ArrowLeft');
+        setupTouchBtn('rightBtn', 'ArrowRight');
 
-      if (gameOver) {
-        ctx.fillStyle = "#ff4444";
-        ctx.font = "24px Arial";
-        ctx.fillText("Game Over!", 100, 150);
-      }
-    }
+        function movePlayer() {
+            if (keys['ArrowUp'] && player.y > 15) player.y -= player.speed;
+            if (keys['ArrowDown'] && player.y < canvas.height - player.size) player.y += player.speed;
+            if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
+            if (keys['ArrowRight'] && player.x < canvas.width - player.size) player.x += player.speed;
+        }
 
-    function gameLoop() {
-      update();
-      draw();
-      if (!gameOver) {
-        requestAnimationFrame(gameLoop);
-      }
-    }
+        function moveEnemy() {
+            if (enemy.x < player.x) enemy.x += enemy.speed;
+            if (enemy.x > player.x) enemy.x -= enemy.speed;
+            if (enemy.y < player.y) enemy.y += enemy.speed;
+            if (enemy.y > player.y) enemy.y -= enemy.speed;
+        }
 
-    resetGame();
-  </script>
+        function checkCollision() {
+            if (player.x < enemy.x + enemy.size &&
+                player.x + player.size > enemy.x &&
+                player.y < enemy.y + enemy.size &&
+                player.y + player.size > enemy.y) {
+                gameOver = true;
+            }
+        }
+
+        function gameLoop() {
+            if (gameOver) {
+                ctx.fillStyle = "white";
+                ctx.font = "26px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("Your Ex Caught You!", canvas.width / 2, canvas.height / 2);
+                return;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            movePlayer();
+            moveEnemy();
+            checkCollision();
+            
+            player.draw();
+            enemy.draw();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
 </body>
 </html>
