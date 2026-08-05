@@ -105,7 +105,18 @@
         let gameOver = false;
         let musicStarted = false;
 
-        // যেকোনো বাটন চাপলে বা টাচ করলে মিউজিক চালু হবে (ব্রাউজার সিকিউরিটির জন্য)
+        // ভয়েস মেসেজ বলার ফাংশন (Text-to-Speech)
+        function speakMessage(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // আগের কোনো ভয়েস চলতে থাকলে তা বন্ধ করা
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'bn-BD'; // বাংলা ভয়েস সেট
+                utterance.pitch = 1;
+                utterance.rate = 0.9;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
         function startMusic() {
             if (!musicStarted) {
                 bgMusic.play().catch(e => console.log("Audio play allowed on user click"));
@@ -225,13 +236,18 @@
                 gameOver = true;
                 restartBtn.style.display = "block";
                 
-                // মিউজিক বন্ধ করে Game Over সাউন্ড বাজবে
                 bgMusic.pause();
                 overSound.play();
+
+                // গেম ওভার ভয়েস কললিং
+                setTimeout(() => {
+                    speakMessage("ফিনিশ! আবার হেরে গেলে তুমি তোমার এক্স এর কাছে... ছি!");
+                }, 500);
             }
         }
 
         function resetGame() {
+            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
             initVars();
             gameLoop();
         }
