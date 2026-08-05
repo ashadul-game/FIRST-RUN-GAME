@@ -19,13 +19,32 @@
             touch-action: manipulation;
         }
         h2 { margin: 5px 0; }
+        #scoreBoard {
+            font-size: 18px;
+            margin-bottom: 5px;
+            color: #00FFCC;
+            font-weight: bold;
+        }
         canvas {
             border: 2px solid #fff;
             background-color: #222;
             max-width: 90vw;
-            max-height: 70vh;
+            max-height: 60vh;
             display: block;
         }
+        #restartBtn {
+            display: none;
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #FF4D4D;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #restartBtn:active { background-color: #cc0000; }
         #controls {
             margin-top: 10px;
             display: grid;
@@ -54,7 +73,9 @@
 </head>
 <body>
     <h2>ধরা-ধরি খেলা</h2>
+    <div id="scoreBoard">স্কোর: <span id="score">0</span></div>
     <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <button id="restartBtn" onclick="resetGame()">আবার শুরু করুন</button>
     
     <div id="controls">
         <div class="btn" id="upBtn">⬆️</div>
@@ -66,55 +87,52 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const restartBtn = document.getElementById('restartBtn');
 
-        // ছেলে প্লেয়ার আঁকার ফাংশন
+        let score = 0;
+        let scoreInterval;
+        let gameOver = false;
+
+        // ছেলে প্লেয়ার (You)
         function drawBoy(x, y, size) {
-            // মাথার ওপর "You" লেখা
             ctx.fillStyle = "#00FFCC";
             ctx.font = "bold 12px Arial";
             ctx.textAlign = "center";
             ctx.fillText("You", x + size/2, y - 5);
 
-            // মাথা
             ctx.fillStyle = "#FFD700";
             ctx.beginPath();
             ctx.arc(x + size/2, y + size/3, size/3, 0, Math.PI * 2);
             ctx.fill();
 
-            // চুল
             ctx.fillStyle = "black";
             ctx.fillRect(x + size/4, y + size/10, size/2, size/5);
 
-            // শরীর
             ctx.fillStyle = "blue";
             ctx.fillRect(x + size/4, y + size/2, size/2, size/2);
 
-            // চোখ
             ctx.fillStyle = "black";
             ctx.fillRect(x + size/3, y + size/4, size/10, size/10);
             ctx.fillRect(x + size*2/3, y + size/4, size/10, size/10);
         }
 
-        // মেয়ে প্লেয়ার আঁকার ফাংশন
+        // মেয়ে প্লেয়ার (Your Ex)
         function drawGirl(x, y, size) {
-            // মাথার ওপর "Your Ex" লেখা
             ctx.fillStyle = "#FF4D4D";
             ctx.font = "bold 12px Arial";
             ctx.textAlign = "center";
             ctx.fillText("Your Ex", x + size/2, y - 5);
 
-            // মাথা
             ctx.fillStyle = "#FFC0CB";
             ctx.beginPath();
             ctx.arc(x + size/2, y + size/3, size/3, 0, Math.PI * 2);
             ctx.fill();
 
-            // লম্বা চুল
             ctx.fillStyle = "brown";
             ctx.fillRect(x, y, size/4, size);
             ctx.fillRect(x + size*3/4, y, size/4, size);
 
-            // জামা
             ctx.fillStyle = "red";
             ctx.beginPath();
             ctx.moveTo(x + size/2, y + size/2);
@@ -122,30 +140,30 @@
             ctx.lineTo(x + size, y + size);
             ctx.fill();
 
-            // চোখ
             ctx.fillStyle = "black";
             ctx.fillRect(x + size/3, y + size/4, size/10, size/10);
             ctx.fillRect(x + size*2/3, y + size/4, size/10, size/10);
         }
 
-        let player = {
-            x: 50,
-            y: 50,
-            size: 20,
-            speed: 5,
-            draw: function() { drawBoy(this.x, this.y, this.size); }
-        };
+        let player, enemy, keys;
 
-        let enemy = {
-            x: 300,
-            y: 300,
-            size: 20,
-            speed: 2,
-            draw: function() { drawGirl(this.x, this.y, this.size); }
-        };
+        function initVars() {
+            player = { x: 50, y: 50, size: 20, speed: 5, draw: function() { drawBoy(this.x, this.y, this.size); } };
+            enemy = { x: 300, y: 300, size: 20, speed: 2, draw: function() { drawGirl(this.x, this.y, this.size); } };
+            keys = {};
+            score = 0;
+            scoreElement.innerText = score;
+            gameOver = false;
+            restartBtn.style.display = "none";
 
-        let keys = {};
-        let gameOver = false;
+            clearInterval(scoreInterval);
+            scoreInterval = setInterval(() => {
+                if (!gameOver) {
+                    score += 10;
+                    scoreElement.innerText = score;
+                }
+            }, 1000);
+        }
 
         window.addEventListener('keydown', e => keys[e.key] = true);
         window.addEventListener('keyup', e => keys[e.key] = false);
@@ -181,15 +199,32 @@
                 player.y < enemy.y + enemy.size &&
                 player.y + player.size > enemy.y) {
                 gameOver = true;
+                restartBtn.style.display = "block";
             }
+        }
+
+        function resetGame() {
+            initVars();
+            gameLoop();
         }
 
         function gameLoop() {
             if (gameOver) {
-                ctx.fillStyle = "white";
-                ctx.font = "26px Arial";
+                // "Finish" লেখা
+                ctx.fillStyle = "#FF4D4D";
+                ctx.font = "bold 32px Arial";
                 ctx.textAlign = "center";
-                ctx.fillText("Your Ex Caught You!", canvas.width / 2, canvas.height / 2);
+                ctx.fillText("Finish", canvas.width / 2, canvas.height / 2 - 40);
+
+                // মিম/মজার মেসেজ
+                ctx.fillStyle = "white";
+                ctx.font = "15px Arial";
+                ctx.fillText("আবার হেরে গেলে তুমি তোমার EX er kache .. Chi..🤧", canvas.width / 2, canvas.height / 2 + 5);
+
+                // স্কোর প্রদর্শন
+                ctx.fillStyle = "#00FFCC";
+                ctx.font = "bold 16px Arial";
+                ctx.fillText("মোট স্কোর: " + score, canvas.width / 2, canvas.height / 2 + 40);
                 return;
             }
 
@@ -205,6 +240,7 @@
             requestAnimationFrame(gameLoop);
         }
 
+        initVars();
         gameLoop();
     </script>
 </body>
