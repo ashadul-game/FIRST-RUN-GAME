@@ -3,7 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Chase & Run Game</title>
+    
+    <!-- টাইটেল এবং শেয়ারিং প্রিভিউ আপডেট -->
+    <title>Created By Ashadul</title>
+    <meta property="og:title" content="Created By Ashadul">
+    <meta property="og:description" content="নিজে বাঁচো এবং Ex-এর হাত থেকে পালিয়ে সর্বোচ্চ স্কোর করো!">
+    <meta name="description" content="Created By Ashadul - A Fun Chase & Run Game">
+
     <style>
         body {
             margin: 0;
@@ -108,9 +114,9 @@
         // ভয়েস মেসেজ বলার ফাংশন (Text-to-Speech)
         function speakMessage(text) {
             if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel(); // আগের কোনো ভয়েস চলতে থাকলে তা বন্ধ করা
+                window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'bn-BD'; // বাংলা ভয়েস সেট
+                utterance.lang = 'bn-BD';
                 utterance.pitch = 1;
                 utterance.rate = 0.9;
                 window.speechSynthesis.speak(utterance);
@@ -239,7 +245,6 @@
                 bgMusic.pause();
                 overSound.play();
 
-                // গেম ওভার ভয়েস কললিং
                 setTimeout(() => {
                     speakMessage("ফিনিশ! আবার হেরে গেলে তুমি তোমার এক্স এর কাছে... ছি!");
                 }, 500);
