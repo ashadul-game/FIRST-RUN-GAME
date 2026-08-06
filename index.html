@@ -4,11 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
-    <!-- টাইটেল এবং শেয়ারিং প্রিভিউ আপডেট -->
     <title>Created By Ashadul</title>
     <meta property="og:title" content="Created By Ashadul">
-    <meta property="og:description" content="নিজে বাঁচো এবং Ex-এর হাত থেকে পালিয়ে সর্বোচ্চ স্কোর করো!">
-    <meta name="description" content="Created By Ashadul - A Fun Chase & Run Game">
+    <meta property="og:description" content="Time Switch এবং Rewind পাওয়ার ব্যবহার করে Ex-এর হাত থেকে বাঁচো!">
+    <meta name="description" content="Created By Ashadul - Time Loop Chase Game">
 
     <style>
         body {
@@ -25,18 +24,24 @@
             touch-action: manipulation;
         }
         h2 { margin: 5px 0; }
-        #scoreBoard {
-            font-size: 18px;
+        #infoPanel {
+            display: flex;
+            gap: 15px;
+            font-size: 16px;
             margin-bottom: 5px;
-            color: #00FFCC;
             font-weight: bold;
         }
+        #scoreBoard { color: #00FFCC; }
+        #eraBoard { color: #FFD700; }
+        #rewindBoard { color: #00FFFF; }
+
         canvas {
             border: 2px solid #fff;
             background-color: #222;
             max-width: 90vw;
-            max-height: 60vh;
+            max-height: 55vh;
             display: block;
+            transition: background-color 0.5s ease;
         }
         #restartBtn {
             display: none;
@@ -50,20 +55,19 @@
             cursor: pointer;
             font-weight: bold;
         }
-        #restartBtn:active { background-color: #cc0000; }
         #controls {
             margin-top: 10px;
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
+            gap: 8px;
             width: 90%;
-            max-width: 300px;
+            max-width: 320px;
         }
         .btn {
             background: #444;
             color: white;
             border: 1px solid #fff;
-            padding: 15px;
+            padding: 12px;
             font-size: 18px;
             text-align: center;
             border-radius: 5px;
@@ -75,11 +79,24 @@
         #leftBtn { grid-column: 1; grid-row: 2; }
         #downBtn { grid-column: 2; grid-row: 2; }
         #rightBtn { grid-column: 3; grid-row: 2; }
+        #timeBtn { 
+            grid-column: 1 / span 3; 
+            grid-row: 3; 
+            background: #8A2BE2; 
+            font-weight: bold; 
+            font-size: 15px;
+        }
+        #timeBtn:active { background: #6a1b9a; }
     </style>
 </head>
 <body>
-    <h2>ধরা-ধরি খেলা</h2>
-    <div id="scoreBoard">স্কোর: <span id="score">0</span></div>
+    <h2>ধরা-ধরি খেলা: Time Loop</h2>
+    <div id="infoPanel">
+        <div id="scoreBoard">স্কোর: <span id="score">0</span></div>
+        <div id="eraBoard">যুগ: <span id="eraText">Present</span></div>
+        <div id="rewindBoard">⏳ Rewind: <span id="rewindCount">0</span></div>
+    </div>
+
     <canvas id="gameCanvas" width="400" height="400"></canvas>
     <button id="restartBtn" onclick="resetGame()">আবার শুরু করুন</button>
     
@@ -88,9 +105,9 @@
         <div class="btn" id="leftBtn">⬅️</div>
         <div class="btn" id="downBtn">⬇️</div>
         <div class="btn" id="rightBtn">➡️</div>
+        <div class="btn" id="timeBtn">🌀 Time Switch (Space)</div>
     </div>
 
-    <!-- ব্যাকগ্রাউন্ড মিউজিক এবং সাউন্ড ইফেক্ট -->
     <audio id="bgMusic" loop>
         <source src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73223.mp3?filename=retro-game-loop-108878.mp3" type="audio/mpeg">
     </audio>
@@ -102,6 +119,8 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('score');
+        const eraText = document.getElementById('eraText');
+        const rewindCount = document.getElementById('rewindCount');
         const restartBtn = document.getElementById('restartBtn');
         const bgMusic = document.getElementById('bgMusic');
         const overSound = document.getElementById('overSound');
@@ -111,7 +130,19 @@
         let gameOver = false;
         let musicStarted = false;
 
-        // ভয়েস মেসেজ বলার ফাংশন (Text-to-Speech)
+        // Eras: Past, Present, Future
+        const eras = [
+            { name: "Past 🏛️", bg: "#3b2e1e", speedMult: 0.7 },
+            { name: "Present 🏢", bg: "#222222", speedMult: 1.0 },
+            { name: "Cyber Future ⚡", bg: "#0d0221", speedMult: 1.4 }
+        ];
+        let currentEraIndex = 1;
+
+        // Rewind System & PowerUp
+        let rewinds = 0;
+        let powerUp = null; // {x, y, size}
+        let rainParticles = [];
+
         function speakMessage(text) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
@@ -125,14 +156,40 @@
 
         function startMusic() {
             if (!musicStarted) {
-                bgMusic.play().catch(e => console.log("Audio play allowed on user click"));
+                bgMusic.play().catch(e => console.log("Audio allowed on click"));
                 musicStarted = true;
             }
         }
         window.addEventListener('keydown', startMusic);
         window.addEventListener('touchstart', startMusic);
 
-        // ছেলে প্লেয়ার (You)
+        // Rain particles setup
+        for(let i = 0; i < 30; i++) {
+            rainParticles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                length: Math.random() * 10 + 5,
+                speed: Math.random() * 4 + 2
+            });
+        }
+
+        function switchEra() {
+            if(gameOver) return;
+            currentEraIndex = (currentEraIndex + 1) % eras.length;
+            eraText.innerText = eras[currentEraIndex].name;
+            canvas.style.backgroundColor = eras[currentEraIndex].bg;
+        }
+
+        function spawnPowerUp() {
+            if (!powerUp && Math.random() < 0.3) {
+                powerUp = {
+                    x: Math.random() * (canvas.width - 40) + 20,
+                    y: Math.random() * (canvas.height - 40) + 20,
+                    size: 15
+                };
+            }
+        }
+
         function drawBoy(x, y, size) {
             ctx.fillStyle = "#00FFCC";
             ctx.font = "bold 12px Arial";
@@ -155,7 +212,6 @@
             ctx.fillRect(x + size*2/3, y + size/4, size/10, size/10);
         }
 
-        // মেয়ে প্লেয়ার (Your Ex)
         function drawGirl(x, y, size) {
             ctx.fillStyle = "#FF4D4D";
             ctx.font = "bold 12px Arial";
@@ -183,14 +239,48 @@
             ctx.fillRect(x + size*2/3, y + size/4, size/10, size/10);
         }
 
+        function drawPowerUp() {
+            if (powerUp) {
+                ctx.fillStyle = "#00FFFF";
+                ctx.font = "16px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("⏳", powerUp.x, powerUp.y);
+            }
+        }
+
+        function drawWeather() {
+            ctx.strokeStyle = "rgba(174,194,224,0.5)";
+            ctx.lineWidth = 1;
+            rainParticles.forEach(p => {
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(p.x, p.y + p.length);
+                ctx.stroke();
+
+                p.y += p.speed;
+                if(p.y > canvas.height) {
+                    p.y = 0;
+                    p.x = Math.random() * canvas.width;
+                }
+            });
+        }
+
         let player, enemy, keys;
 
         function initVars() {
-            player = { x: 50, y: 50, size: 20, speed: 5, draw: function() { drawBoy(this.x, this.y, this.size); } };
-            enemy = { x: 300, y: 300, size: 20, speed: 2, draw: function() { drawGirl(this.x, this.y, this.size); } };
+            player = { x: 50, y: 50, size: 20, baseSpeed: 5, draw: function() { drawBoy(this.x, this.y, this.size); } };
+            enemy = { x: 300, y: 300, size: 20, baseSpeed: 2, draw: function() { drawGirl(this.x, this.y, this.size); } };
             keys = {};
             score = 0;
+            rewinds = 0;
+            currentEraIndex = 1;
+            powerUp = null;
+
             scoreElement.innerText = score;
+            rewindCount.innerText = rewinds;
+            eraText.innerText = eras[currentEraIndex].name;
+            canvas.style.backgroundColor = eras[currentEraIndex].bg;
+
             gameOver = false;
             restartBtn.style.display = "none";
 
@@ -202,12 +292,18 @@
                 if (!gameOver) {
                     score += 10;
                     scoreElement.innerText = score;
+                    spawnPowerUp();
                 }
             }, 1000);
         }
 
-        window.addEventListener('keydown', e => keys[e.key] = true);
+        window.addEventListener('keydown', e => {
+            keys[e.key] = true;
+            if(e.key === ' ' || e.key === 'Spacebar') switchEra();
+        });
         window.addEventListener('keyup', e => keys[e.key] = false);
+
+        document.getElementById('timeBtn').addEventListener('click', switchEra);
 
         function setupTouchBtn(id, key) {
             const btn = document.getElementById(id);
@@ -221,17 +317,26 @@
         setupTouchBtn('rightBtn', 'ArrowRight');
 
         function movePlayer() {
-            if (keys['ArrowUp'] && player.y > 15) player.y -= player.speed;
-            if (keys['ArrowDown'] && player.y < canvas.height - player.size) player.y += player.speed;
-            if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
-            if (keys['ArrowRight'] && player.x < canvas.width - player.size) player.x += player.speed;
+            let speed = player.baseSpeed;
+            if (keys['ArrowUp'] && player.y > 15) player.y -= speed;
+            if (keys['ArrowDown'] && player.y < canvas.height - player.size) player.y += speed;
+            if (keys['ArrowLeft'] && player.x > 0) player.x -= speed;
+            if (keys['ArrowRight'] && player.x < canvas.width - player.size) player.x += speed;
+
+            // Power-Up Collection Check
+            if (powerUp && Math.hypot(player.x - powerUp.x, player.y - powerUp.y) < player.size) {
+                rewinds++;
+                rewindCount.innerText = rewinds;
+                powerUp = null;
+            }
         }
 
         function moveEnemy() {
-            if (enemy.x < player.x) enemy.x += enemy.speed;
-            if (enemy.x > player.x) enemy.x -= enemy.speed;
-            if (enemy.y < player.y) enemy.y += enemy.speed;
-            if (enemy.y > player.y) enemy.y -= enemy.speed;
+            let speed = enemy.baseSpeed * eras[currentEraIndex].speedMult;
+            if (enemy.x < player.x) enemy.x += speed;
+            if (enemy.x > player.x) enemy.x -= speed;
+            if (enemy.y < player.y) enemy.y += speed;
+            if (enemy.y > player.y) enemy.y -= speed;
         }
 
         function checkCollision() {
@@ -239,6 +344,17 @@
                 player.x + player.size > enemy.x &&
                 player.y < enemy.y + enemy.size &&
                 player.y + player.size > enemy.y) {
+                
+                // Rewind Mechanic: বেঁচে যাওয়ার সুযোগ
+                if (rewinds > 0) {
+                    rewinds--;
+                    rewindCount.innerText = rewinds;
+                    // ৩ সেকেন্ড পেছনে বা দূরে রিপজিশন করা
+                    enemy.x = canvas.width - 50;
+                    enemy.y = canvas.height - 50;
+                    return;
+                }
+
                 gameOver = true;
                 restartBtn.style.display = "block";
                 
@@ -276,10 +392,12 @@
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
+            drawWeather();
             movePlayer();
             moveEnemy();
             checkCollision();
             
+            drawPowerUp();
             player.draw();
             enemy.draw();
             
